@@ -1,0 +1,14 @@
+apiVersion: v1
+metadata:
+  name: {{.Release.Name}}
+  namespace: {{.Release.Namespace}}
+  labels:
+    {{- include "bind9.labels" . | nindent 4 }}
+data:
+  named.conf: |
+    {{ .Values.bind9.named | nindent 4 }}
+  {{-  range $name, $value := .Values.bind9.zones }}
+  {{$name}}.zone: |
+    {{ $value | nindent 4 }}
+  {{- end }}
+kind: ConfigMap

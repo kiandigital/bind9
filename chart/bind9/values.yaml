@@ -1,0 +1,164 @@
+# Default values for bind9.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: kiandigital/bind9
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+bind9:
+  named: |
+    ########################
+    ## options
+    ########################
+
+    options {
+
+        directory "/var/bind";
+
+        version "private";
+
+        listen-on port 53 { any; };
+        listen-on-v6 { none; };
+
+        allow-transfer { none; };
+
+        pid-file "/var/run/named/named.pid";
+
+        allow-recursion { none; };
+        recursion no;
+
+    };
+
+
+    ########################
+    ## zones
+    ########################
+
+    zone "example.com" IN {
+        type master;
+        file "/etc/bind/example.com.zone";
+    };
+
+
+    ########################
+    ## logging
+    ########################
+
+    logging {
+        channel general {
+            file "/var/log/named/general.log" versions 5;
+            print-time yes;
+            print-category yes;
+            print-severity yes;
+        };
+
+        channel queries {
+            file "/var/log/named/queries.log" versions 5 size 10m;
+            print-time yes;
+            print-category yes;
+            print-severity yes;
+        };
+
+        channel security {
+            file "/var/log/named/security.log" versions 5;
+            print-time yes;
+            print-category yes;
+            print-severity yes;
+        };
+
+        category default { general; };
+        category general { general; };
+        category config { general; };
+        category network { general; };
+        category queries { queries; };
+        category security { security; };
+    };
+  zones:
+    example.com: |
+      $TTL 1h
+      ; -----------------------------------------------------------------------------
+      ; SOA for example.com
+      ; -----------------------------------------------------------------------------
+
+      @ IN SOA ns1.example.com contact.example.com. (
+                  2016021501      ; Serial
+                  1h              ; Refresh
+                  15m             ; Retry
+                  1d              ; Expire
+                  1h );           ; Negative Cache TTL
+
+      ; -----------------------------------------------------------------------------
+      ; zone records
+      ; -----------------------------------------------------------------------------
+      example.com.        1800    IN    NS        ns1.example.com.
+
+      ; -----------------------------------------------------------------------------
+      ; pointer records
+      ; -----------------------------------------------------------------------------
+      ns1                 1800    IN    A         172.28.28.28
+      www                 1800    IN    A         192.168.1.50
+
+      ; -----------------------------------------------------------------------------
+      ; cname records
+      ; -----------------------------------------------------------------------------
+      webmail             3600    IN    CNAME     www.example.com.
