@@ -48,7 +48,7 @@ spec:
               port: 53
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          mount:
+          volumeMounts:
           - name: {{ .Release.Name }}-configmap
             mountPath: "/etc/bind/"
       {{- with .Values.nodeSelector }}

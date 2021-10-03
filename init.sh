@@ -18,6 +18,8 @@ COMMAND="/usr/sbin/named -u ${USER} -c /etc/bind/named.conf ${COMMAND_OPTIONS:=$
 NAMED_UID_ACTUAL=$(id -u ${USER})
 NAMED_GID_ACTUAL=$(id -g ${GROUP})
 
+[ -d /var/log/named ] || mkdir /var/log/named
+
 #
 # Display settings on standard out.
 #
@@ -64,7 +66,7 @@ echo "[DONE]"
 # Start named.
 #
 echo "Start named... "
-exec ${COMMAND} &
+  ${COMMAND} &
 
 
 PID=$(ps aux | grep named | awk '{print $1}')
