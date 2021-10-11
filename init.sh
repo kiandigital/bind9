@@ -3,7 +3,35 @@
 #
 # Script options (exit script on command fail).
 #
-set -e
+# set -e
+
+
+update_zones(){
+  truncate -s 0 /tmp/zones
+  for z in $(ls -1  /etc/bind/*.zone); do 
+    zone=$(basename $z | sed "s|\.zone$||")
+    cat >>/tmp/zones <<EOL
+    zone "${zone}" IN {
+      type master;
+      file "/etc/bind/${zone}.zone";
+    };
+EOL
+  done
+  mv /tmp/zones /tmp/automated.zones
+}
+
+watch_config(){
+  PID=$(ps aux | grep named | grep -v grep | awk '{print $1}')
+  echo "PID: $PID"
+  CONFIG_HASH=$(md5sum /etc/bind/* | paste -s -d ' ' | md5sum | awk '{print $1}')
+  while true ; do
+    sleep 10
+    update_zones
+    CONFIG_HASH_NEW=$(md5sum /etc/bind/* | paste -s -d ' ' | md5sum | awk '{print $1}')
+    [ "$CONFIG_HASH" = "$CONFIG_HASH_NEW" ] || kill -1 $PID 
+    CONFIG_HASH="$CONFIG_HASH_NEW"
+  done
+}
 
 #
 # Define default Variables.
@@ -18,8 +46,7 @@ COMMAND="/usr/sbin/named -u ${USER} -c /etc/bind/named.conf ${COMMAND_OPTIONS:=$
 NAMED_UID_ACTUAL=$(id -u ${USER})
 NAMED_GID_ACTUAL=$(id -g ${GROUP})
 
-[ -d /var/log/named ] || mkdir /var/log/named
-
+update_zones
 #
 # Display settings on standard out.
 #
@@ -39,12 +66,12 @@ echo
 # Change UID / GID of named user.
 #
 echo "Updating UID / GID... "
-if [[ ${NAMED_GID_ACTUAL} -ne ${NAMED_GID} -o ${NAMED_UID_ACTUAL} -ne ${NAMED_UID} ]]
+if [ ${NAMED_GID_ACTUAL} -ne ${NAMED_GID} -o ${NAMED_UID_ACTUAL} -ne ${NAMED_UID} ]
 then
     echo "change user / group"
     deluser ${USER}
     addgroup -g ${NAMED_GID} ${GROUP}
-    adduser -u ${NAMED_UID} -G ${GROUP} -h /etc/bind -g 'Linux User named' -s /sbin/nologin -D ${USER}
+    adduser -u ${NAMED_UID} -G ${GROUP} -g 'Linux User named' -s /sbin/nologin -D ${USER}
     echo "[DONE]"
     echo "Set owner and permissions for old uid/gid files"
     find / -not \( -path /proc -prune \) -not \( -path /sys -prune \) -user ${NAMED_UID_ACTUAL} -exec chown ${USER} {} \;
@@ -55,25 +82,19 @@ else
 fi
 
 #
-# Set owner and permissions.
+# Checking config
 #
-echo "Set owner and permissions... "
-chown -R ${USER}:${GROUP} /var/bind /etc/bind /var/run/named /var/log/named
-chmod -R o-rwx /var/bind /etc/bind /var/run/named /var/log/named
-echo "[DONE]"
+echo "Checking config ..."
+/usr/sbin/named-checkconf /etc/bind/named.conf
 
 #
 # Start named.
 #
-echo "Start named... "
-  ${COMMAND} &
+echo "Start named... " 
+${COMMAND} 2>&1 &
 
-
-PID=$(ps aux | grep named | awk '{print $1}')
-CONFIG_HASH=$(md5sum /etc/bind/* | paste -s -d ' ' | md5sum | awk '{print $1}')
-while true ; do
-  sleep 10
-  CONFIG_HASH_NEW=$(md5sum /etc/bind/* | paste -s -d ' ' | md5sum | awk '{print $1}')
-  [[ "$CONFIG_HASH" = "$CONFIG_HASH_NEW" ]] || kill -1 $PID 
-  CONFIG_HASH="$CONFIG_HASH_NEW"
-done
+#
+# Checking config
+#
+echo "Watch config ..."
+watch_config 

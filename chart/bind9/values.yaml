@@ -89,76 +89,57 @@ bind9:
 
     };
 
-
-    ########################
-    ## zones
-    ########################
-
-    zone "example.com" IN {
-        type master;
-        file "/etc/bind/example.com.zone";
-    };
-
-
     ########################
     ## logging
     ########################
 
     logging {
-        channel general {
-            file "/var/log/named/general.log" versions 5;
+        channel stdout {
+            stderr;
+            severity info;
+            print-category no;
+            print-severity no;
             print-time yes;
-            print-category yes;
-            print-severity yes;
         };
-
-        channel queries {
-            file "/var/log/named/queries.log" versions 5 size 10m;
-            print-time yes;
-            print-category yes;
-            print-severity yes;
-        };
-
-        channel security {
-            file "/var/log/named/security.log" versions 5;
-            print-time yes;
-            print-category yes;
-            print-severity yes;
-        };
-
-        category default { general; };
-        category general { general; };
-        category config { general; };
-        category network { general; };
-        category queries { queries; };
-        category security { security; };
+        category default { stdout; };
+        category general { stdout; };
+        category config { stdout; };
+        category network { stdout; };
+        category queries { stdout; };
+        category security { stdout; };
     };
-  zones:
-    example.com: |
-      $TTL 1h
-      ; -----------------------------------------------------------------------------
-      ; SOA for example.com
-      ; -----------------------------------------------------------------------------
 
-      @ IN SOA ns1.example.com contact.example.com. (
-                  2016021501      ; Serial
-                  1h              ; Refresh
-                  15m             ; Retry
-                  1d              ; Expire
-                  1h );           ; Negative Cache TTL
+    ########################
+    ## zones
+    ########################
+    include "/tmp/automated.zones";
 
-      ; -----------------------------------------------------------------------------
-      ; zone records
-      ; -----------------------------------------------------------------------------
-      example.com.        1800    IN    NS        ns1.example.com.
+  zones: []
+    # example.com: |
+    #   $TTL 1h
+    #   ; -----------------------------------------------------------------------------
+    #   ; SOA for example.com
+    #   ; -----------------------------------------------------------------------------
 
-      ; -----------------------------------------------------------------------------
-      ; pointer records
-      ; -----------------------------------------------------------------------------
-      ns1                 1800    IN    A         172.28.28.28
-      www                 1800    IN    A         192.168.1.50
+    #   @ IN SOA ns1.example.com contact.example.com. (
+    #               2016021501      ; Serial
+    #               1h              ; Refresh
+    #               15m             ; Retry
+    #               1d              ; Expire
+    #               1h );           ; Negative Cache TTL
 
-      ; -----------------------------------------------------------------------------
-      ; cname records
-      ; -----------------------------------------------------------------------------
-      webmail             3600    IN    CNAME     www.example.com.
+    #   ; -----------------------------------------------------------------------------
+    #   ; zone records
+    #   ; -----------------------------------------------------------------------------
+    #   example.com.        1800    IN    NS        ns1.example.com.
+
+    #   ; -----------------------------------------------------------------------------
+    #   ; pointer records
+    #   ; -----------------------------------------------------------------------------
+    #   ns1                 1800    IN    A         172.28.28.28
+    #   www                 1800    IN    A         192.168.1.50
+
+    #   ; -----------------------------------------------------------------------------
+    #   ; cname records
+    #   ; -----------------------------------------------------------------------------
+    #   webmail             3600    IN    CNAME     www.example.com.
